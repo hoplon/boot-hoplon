@@ -10,7 +10,6 @@
   (:refer-clojure :exclude [replace])
   (:require
     [pl.danieljanus.tagsoup :as ts]
-    [clojure.pprint         :as pp :refer [pprint]]
     [clojure.string         :as cs :refer [blank? replace replace-first split join]]
     [clojure.walk           :as cw :refer [postwalk]]))
 

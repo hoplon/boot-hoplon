@@ -1,7 +1,7 @@
 (ns tailrecursion.boot-hoplon.impl
   (:require
     [boot.util                              :as util]
-    [clojure.pprint                         :as pp]
+    [fipp.clojure                           :as pp]
     [clojure.java.io                        :as io]
     [clojure.string                         :as string]
     [clojure.java.shell                     :as sh]
@@ -44,7 +44,10 @@
     (hl/compile-file (io/file in-path) (io/file cljs-dir) (io/file html-dir) :opts opts)))
 
 (defn html2cljs [file]
-  (->> file slurp hl/as-forms
-       (#(with-out-str (pp/write % :dispatch pp/code-dispatch)))
-       clojure.string/trim
+  (->> file
+       slurp
+       hl/as-forms
+       pp/pprint
+       with-out-str
+       string/trim
        (#(subs % 1 (dec (count %))))))

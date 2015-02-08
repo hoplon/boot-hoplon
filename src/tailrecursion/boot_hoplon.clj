@@ -65,8 +65,8 @@ page.open(uri, function(status) {
 
   If you are compiling library, you need to include resulting cljs in target.
   Do it by specifying :lib flag."
-  [pp pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
-   l  lib          bool "Include produced cljs in the final artefact."]
+  [p  pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
+   l  lib          bool "Include produced cljs in the final artifact."]
   (let [prev-fileset (atom nil)
         tmp-cljs     (boot/temp-dir!)
         tmp-html     (boot/temp-dir!)

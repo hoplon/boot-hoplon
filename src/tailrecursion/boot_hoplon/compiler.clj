@@ -8,7 +8,7 @@
 
 (ns tailrecursion.boot-hoplon.compiler
   (:require
-    [clojure.pprint :as pp]
+    [fipp.clojure :as pp]
     [clojure.java.io :as io]
     [clojure.string :as str]
     [tailrecursion.boot-hoplon.tagsoup :as tags]
@@ -99,8 +99,6 @@
             {:html htmlstr :edn ednstr :cljs cljsstr :ns page-ns :file outpath})
           {:cljs cljsstr :ns page-ns})))))
 
-(defn pp [form] (pp/write form :dispatch pp/code-dispatch))
-
 (defn- write [f s]
   (when (and f s)
     (doto f io/make-parents (spit s))))
@@ -110,7 +108,7 @@
   (let [{:keys [pretty-print]} opts
         {:keys [cljs ns html edn file]}
         (when-let [forms (as-forms forms-str)]
-          (binding [*printer* (if pretty-print pp prn)]
+          (binding [*printer* (if pretty-print pp/pprint prn)]
             (compile-forms forms)))
         cljs-out (io/file cljsdir (ns->path ns))]
     (write cljs-out cljs)
