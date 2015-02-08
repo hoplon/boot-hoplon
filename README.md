@@ -10,12 +10,7 @@
 
 ## Usage
 
-Add `boot-hoplon` to your `build.boot` dependencies and `require` the namespace.
-
-> **Note:** the boot-hoplon dependency is only needed at when compiling Hoplon
-> source files, but hoplon itself is needed both when compiling and at runtime.
-> So you should add boot-hoplon with the _test_ scope and hoplon with the
-> (default) _compile_ scope.
+Add `boot-hoplon` to your `build.boot` dependencies and `require` the namespace:
 
 ```clj
 (merge-env!
@@ -23,6 +18,11 @@ Add `boot-hoplon` to your `build.boot` dependencies and `require` the namespace.
                   [tailrecursion/boot-hoplon "X.Y.Z" :scope "test"])
 (require '[tailrecursion.boot-hoplon :refer :all])
 ```
+
+> **Note:** the boot-hoplon dependency is only needed at when compiling Hoplon
+> source files, but hoplon itself is needed both when compiling and at runtime.
+> So you should add boot-hoplon with the _test_ scope and hoplon with the
+> (default) _compile_ scope.
 
 You can see the options available on the command line:
 
