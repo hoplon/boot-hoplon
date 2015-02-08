@@ -32,7 +32,7 @@
       (list*
         (apply symbol (split-ns tag))
         (concat
-          (if (empty? attr) (list) (list (ns-keys attr))) 
+          (if (empty? attr) (list) (list (ns-keys attr)))
           (map parse-hiccup kids))))))
 
 (defn collapse [x]
@@ -64,10 +64,10 @@
   (cond (string? form) (list '$text form)
         (symbol? form) (list form {})
         (seq? form)
-        (let [[tag & tail] form] 
+        (let [[tag & tail] form]
           (if (or (= '$text tag) (= '$comment tag))
             form
-            (let [attr (if (map? (first tail)) (first tail) {}) 
+            (let [attr (if (map? (first tail)) (first tail) {})
                   kids (map pedanticize (if (map? (first tail)) (rest tail) tail))]
               (list* tag attr kids))))))
 
@@ -76,8 +76,8 @@
     'keygen   'link     'menuitem 'meta     'param    'source   'track  'wbr})
 
 (defn attr->string [attr]
-  (->> (for [[k v] attr] 
-         (str (name k) "=" (pr-str (if (string? v) v (str "{{ " v " }}"))))) 
+  (->> (for [[k v] attr]
+         (str (name k) "=" (pr-str (if (string? v) v (str "{{ " v " }}")))))
        (cons "")
        (interpose " ")
        (apply str)))
