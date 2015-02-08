@@ -10,10 +10,18 @@
 
 ## Usage
 
-Add `boot-hoplon` to your `build.boot` dependencies and `require` the namespace:
+Add `boot-hoplon` to your `build.boot` dependencies and `require` the namespace
+to bring in the tasks.
+
+> *Note:* the `boot-hoplon` dependency is only needed at when compiling Hoplon
+> source files, but `hoplon` itself is needed both when compiling and at runtime.
+> So you should add `boot-hoplon` with the _test_ scope but `hoplon` with the
+> (default) _compile_ scope.
 
 ```clj
-(merge-env! :dependencies '[[tailrecursion/boot-hoplon "X.Y.Z" :scope "test"]])
+(merge-env!
+  :dependencies '[[tailrecursion/hoplon "A.B.C"]
+                  [tailrecursion/boot-hoplon "X.Y.Z" :scope "test"])
 (require '[tailrecursion.boot-hoplon :refer :all])
 ```
 
