@@ -13,9 +13,9 @@
 Add `boot-hoplon` to your `build.boot` dependencies and `require` the namespace
 to bring in the tasks.
 
-> *Note:* the `boot-hoplon` dependency is only needed at when compiling Hoplon
-> source files, but `hoplon` itself is needed both when compiling and at runtime.
-> So you should add `boot-hoplon` with the _test_ scope but `hoplon` with the
+> **Note:** the boot-hoplon dependency is only needed at when compiling Hoplon
+> source files, but hoplon itself is needed both when compiling and at runtime.
+> So you should add boot-hoplon with the _test_ scope and hoplon with the
 > (default) _compile_ scope.
 
 ```clj
