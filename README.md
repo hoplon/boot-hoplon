@@ -10,8 +10,7 @@
 
 ## Usage
 
-Add `boot-hoplon` to your `build.boot` dependencies and `require` the namespace
-to bring in the tasks.
+Add `boot-hoplon` to your `build.boot` dependencies and `require` the namespace.
 
 > **Note:** the boot-hoplon dependency is only needed at when compiling Hoplon
 > source files, but hoplon itself is needed both when compiling and at runtime.
