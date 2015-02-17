@@ -109,5 +109,5 @@ page.open(uri, function(status) {
         (doseq [[p in] haml]
           (let [p   (.replaceAll p "\\.hl\\.haml$" ".cljs.hl")
                 out (doto (io/file tmp p) io/make-parents)]
-            (->> in slurp haml/parse-string pr-str (spit out))))
+            (->> in slurp haml/parse-string (map pr-str) (apply str) (spit out))))
         (-> fileset (boot/add-source tmp) boot/commit!)))))

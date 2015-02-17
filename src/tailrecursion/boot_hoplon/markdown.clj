@@ -35,8 +35,9 @@
 ;; pegdown ast nodes --> clojure maps
 
 (defn references [x]
-  (->> (:references x)
-       (map #(hash-map :ref (first (:children %)) :url (:url %)))))
+  (let [ref (juxt (comp first :children)
+                  #(select-keys % [:url :title]))]
+    (update-in x [:references] #(into {} (map ref %)))))
 
 (defn visit-vals [x]
   (into {} (->> x (map (fn [[k v]]
@@ -52,6 +53,7 @@
   (case (:tag x)
     :text-node         (:text x)
     :special-text-node (:text x)
+    :root-node         (references x)
     :super-node        (unlist (:children x))
     #_:else            x))
 
@@ -80,19 +82,20 @@
   (if-not (map? x)
     x
     (let [{:keys [tag children]} x
-          op   (or (get node-map tag) (symbol (name tag)))
-          attr (seq (mapcat identity (dissoc x :tag :children)))]
-      `(~op ~@attr ~@(map (partial to-sexp node-map) children)))))
+          op   (get node-map tag)
+          attr (dissoc x :tag :children)]
+      (assert op (format "no mapping for %s" tag))
+      `(~op ~attr [~@(map (partial to-sexp node-map) children)]))))
 
 (defn parse-string
   ([node-map x]
    (parse-string (cached-parser) node-map x))
   ([parser node-map x]
-   (let [root (to-clj (make-tree parser x))]
-     (to-sexp node-map root))))
+   (to-sexp node-map (to-clj (make-tree parser x)))))
 
 (comment
 
+  (use 'clojure.pprint)
   (->> "README.md" slurp (parse-string {}) pprint)
 
   )

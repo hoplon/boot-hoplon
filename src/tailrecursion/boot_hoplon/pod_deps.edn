@@ -1,2 +1,5 @@
-[[clj-tagsoup                "0.3.0"]
- [org.clojure/tools.reader   "0.8.13"]]
+[[clj-tagsoup              "0.3.0"]
+ [camel-snake-kebab        "0.3.0"]
+ [org.pegdown/pegdown      "1.4.2"]
+ [enlive                   "1.1.5"]
+ [org.clojure/tools.reader "0.8.13"]]

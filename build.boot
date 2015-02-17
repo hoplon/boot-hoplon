@@ -2,11 +2,10 @@
   ;; using the sonatype repo is sometimes useful when testing Clojurescript
   ;; versions that not yet propagated to Clojars
   ;; :repositories #(conj % '["sonatype" {:url "http://oss.sonatype.org/content/repositories/releases"}])
-  :dependencies '[[org.clojure/clojure   "1.6.0"     :scope "provided"]
-                  [boot/core             "2.0.0-rc9" :scope "provided"]
-                  [adzerk/bootlaces      "0.1.10"    :scope "test"]
-                  [camel-snake-kebab     "0.3.0"     :scope "test"]
-                  [org.pegdown/pegdown   "1.4.2"     :scope "test"]])
+  :dependencies '[[org.clojure/clojure       "1.6.0"          :scope "provided"]
+                  [boot/core                 "2.0.0-rc9"      :scope "provided"]
+                  [tailrecursion/hoplon      "6.0.0-SNAPSHOT" :scope "test"]
+                  [adzerk/bootlaces          "0.1.10"         :scope "test"]])
 
 (require
   '[clojure.java.io :as io]
@@ -15,6 +14,8 @@
 (def +version+ "0.1.0")
 
 (bootlaces! +version+ :dev-dependencies "tailrecursion/boot_hoplon/pod_deps.edn")
+
+(require '[tailrecursion.boot-hoplon :refer :all])
 
 (task-options!
   pom  {:project     'tailrecursion/boot-hoplon
