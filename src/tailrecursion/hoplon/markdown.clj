@@ -53,6 +53,12 @@
              *abbreviations* (merge *abbreviations* ~abbreviations)]
      ~kids))
 
+(defmacro verbatim-node [{:keys [text type]} _]
+  (if (empty? type)
+    `(tailrecursion.hoplon/pre (tailrecursion.hoplon/code ~text))
+    (pod/with-call-in @hoplon-pod
+      (tailrecursion.boot-hoplon.pygments/hl ~type ~text))))
+
 (defmacro md
   ([text] (md nil text))
   ([{:keys [references abbreviations]} text]

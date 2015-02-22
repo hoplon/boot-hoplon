@@ -88,9 +88,4 @@
 (defelem table-header-node  [attr kids] nil)
 (defelem table-node         [attr kids] nil)
 (defelem table-row-node     [attr kids] nil)
-
-(defelem verbatim-node [{:keys [text type]} _]
-  (pre (code :class type text)))
-
-(defelem wiki-link-node [attr kids] nil)
-
+(defelem wiki-link-node     [attr kids] nil)
