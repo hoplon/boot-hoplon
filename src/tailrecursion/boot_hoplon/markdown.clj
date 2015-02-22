@@ -1,5 +1,6 @@
 (ns tailrecursion.boot-hoplon.markdown
   (:require
+    [net.cgrand.enlive-html :refer [html-snippet]]
     [camel-snake-kebab.core :refer [->kebab-case]])
   (:import
     [java.lang.reflect Modifier]
@@ -12,6 +13,7 @@
 (defn enum?       [x] (and x (.isEnum (class x))))
 (defn unlist      [x] (if-not (and (seq? x) (= 1 (count x))) x (first x)))
 (defn enum->kw    [x] (if-not (enum? x) x (keyword (->kebab-case (.name x)))))
+(defn escape      [x] (-> x (.replaceAll "<" "&lt;") (.replaceAll ">" "&gt;")))
 (defn pegdown?    [x] (and x (= (.getPackage (class x)) (.getPackage AbstractNode))))
 (defn concat-strs [x] (->> (partition-by string? x)
                            (mapcat #(if-not (string? (first %)) % [(apply str %)]))))
@@ -21,7 +23,8 @@
 ;; pegdown parser
 
 (defn make-parser []
-  (PegDownProcessor. (int (bit-xor Extensions/ALL Extensions/HARDWRAPS))))
+  (PegDownProcessor. (int (bit-xor Extensions/ALL
+                                   Extensions/HARDWRAPS))))
 
 (let [cache (atom nil)]
   (defn cached-parser []
@@ -51,11 +54,13 @@
 
 (defn specials [x]
   (case (:tag x)
-    :text-node         (:text x)
-    :special-text-node (:text x)
-    :root-node         (references x)
-    :super-node        (unlist (:children x))
-    #_:else            x))
+    (:text-node
+     :special-text-node
+     :html-block-node
+     :inline-html-node) (-> x :text escape html-snippet first)
+    :root-node          (references x)
+    :super-node         (unlist (:children x))
+    #_:else             x))
 
 (defn concat-text [x]
   (if-not (map? x) x (update-in x [:children] concat-strs)))
@@ -92,10 +97,3 @@
    (parse-string (cached-parser) node-map x))
   ([parser node-map x]
    (to-sexp node-map (to-clj (make-tree parser x)))))
-
-(comment
-
-  (use 'clojure.pprint)
-  (->> "README.md" slurp (parse-string {}) pprint)
-
-  )

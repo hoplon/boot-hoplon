@@ -1,7 +1,7 @@
 (ns tailrecursion.hoplon.markdown
   (:require
-    [tailrecursion.hoplon               :as hoplon]
-    [tailrecursion.boot-hoplon.markdown :as markdown]))
+    [boot.pod :as pod]
+    [clojure.java.io :as io]))
 
 (declare ^:dynamic *references*)
 (declare ^:dynamic *abbreviations*)
@@ -18,8 +18,6 @@
            :exp-image-node                  exp-image-node
            :exp-link-node                   exp-link-node
            :header-node                     header-node
-           :html-block-node                 html-block-node
-           :inline-html-node                inline-html-node
            :list-item-node                  list-item-node
            :mail-link-node                  mail-link-node
            :ordered-list-node               ordered-list-node
@@ -44,6 +42,11 @@
            :verbatim-node                   verbatim-node
            :wiki-link-node                  wiki-link-node}))
 
+(def hoplon-pod
+  (delay (pod/make-pod (->> (-> "tailrecursion/boot_hoplon/pod_deps.edn"
+                                io/resource slurp read-string)
+                            (update-in pod/env [:dependencies] into)))))
+
 (defmacro root-node
   [{:keys [abbreviations references]} kids]
   `(binding [*references*    (merge *references* ~references)
@@ -53,17 +56,8 @@
 (defmacro md
   ([text] (md nil text))
   ([{:keys [references abbreviations]} text]
-   `(binding [*references*    (merge *references* ~references)
-              *abbreviations* (merge *abbreviations* ~abbreviations)]
-      ~(markdown/parse-string *node-map* (eval text)))))
-
-(comment
-  
-  (prn node-map)
-  (use 'clojure.pprint)
-  (use '[clojure.walk :only [macroexpand-all]])
-  (->> node-map :root-node)
-
-  (->> "README.md" slurp md quote macroexpand pprint)
-  )
-
+   (let [forms (pod/with-call-in @hoplon-pod
+                 (tailrecursion.boot-hoplon.markdown/parse-string ~*node-map* ~(eval text)))]
+     `(binding [*references*    (merge *references* ~references)
+                *abbreviations* (merge *abbreviations* ~abbreviations)]
+        ~forms))))

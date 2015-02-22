@@ -33,27 +33,18 @@
   [{:keys [level]} kids]
   (apply (nth (concat [h6 h1 h2 h3 h4 h5] (repeat h6)) level) kids))
 
-(defelem html-block-node [attr kids]
-  )
-
-(defelem inline-html-node [attr kids]
-  )
-
 (def list-item-node li)
 
-(defelem mail-link-node [attr kids]
-  )
+(defelem mail-link-node [{:keys [text]} _]
+  (a :href (str "mailto:" text) text))
 
 (def ordered-list-node ol)
 (def para-node         p)
 
-(defelem quoted-node
-  [{:keys [type]} kids]
-  (let [q {:double-angle ["\u00AB" "\u00BB"]
-           :double       ["\u201C" "\u201D"]
-           :single       ["\u2018" "\u2019"]}
-        [start end] (q type)]
-    (concat [start] kids [end])))
+(defmulti  quoted-node (fn [{:keys [type]} kids] type))
+(defmethod quoted-node :double-angle [_ kids] (concat ["\u00AB"] kids ["\u00BB"]))
+(defmethod quoted-node :double       [_ kids] (concat ["\u201C"] kids ["\u201D"]))
+(defmethod quoted-node :single       [_ kids] (concat ["\u2018"] kids ["\u2019"]))
 
 (defelem ref-image-node
   [{rk :reference-key ss :separator-space} [alt & _ :as kids]]
@@ -90,29 +81,16 @@
     (into [chars] kids)
     (apply (if-not strong? em strong) kids)))
 
-(def table-body-node    tbody)
-(def table-caption-node caption)
-
-(defelem table-cell-node [attr kids]
-  )
-
-(defelem table-column-node [attr kids]
-  )
-
-(defelem table-header-node [attr kids]
-  )
-
-(defelem table-node [attr kids]
-  )
-
-(defelem table-row-node [attr kids]
-  )
+(defelem table-body-node    [attr kids] nil)
+(defelem table-caption-node [attr kids] nil)
+(defelem table-cell-node    [attr kids] nil)
+(defelem table-column-node  [attr kids] nil)
+(defelem table-header-node  [attr kids] nil)
+(defelem table-node         [attr kids] nil)
+(defelem table-row-node     [attr kids] nil)
 
 (defelem verbatim-node [{:keys [text type]} _]
-  (pre (code :class type text))
-  )
+  (pre (code :class type text)))
 
-(defelem wiki-link-node [attr kids]
-  (pre (pr-str [attr kids]))
-  )
+(defelem wiki-link-node [attr kids] nil)
 

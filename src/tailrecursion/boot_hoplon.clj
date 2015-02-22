@@ -29,7 +29,7 @@ page.open(uri, function(status) {
   }, 0);
 });")
 
-(def ^:private hoplon-pod
+(def hoplon-pod
   (delay (pod/make-pod (->> (-> "tailrecursion/boot_hoplon/pod_deps.edn"
                                 io/resource slurp read-string)
                             (update-in pod/env [:dependencies] into)))))
