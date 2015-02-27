@@ -75,7 +75,6 @@ page.open(uri, function(status) {
         pod          (future @hoplon-pod)
         add-cljs     (if lib boot/add-resource boot/add-source)]
     (boot/with-pre-wrap fileset
-      (boot/empty-dir! tmp-html)
       (let [hl (->> fileset
                     (boot/fileset-diff @prev-fileset)
                     boot/input-files
