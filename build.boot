@@ -3,7 +3,6 @@
   ;; versions that not yet propagated to Clojars
   ;; :repositories #(conj % '["sonatype" {:url "http://oss.sonatype.org/content/repositories/releases"}])
   :dependencies '[[org.clojure/clojure       "1.6.0"          :scope "provided"]
-                  [boot/core                 "2.0.0-rc9"      :scope "provided"]
                   [tailrecursion/hoplon      "6.0.0-SNAPSHOT" :scope "test"]
                   [adzerk/bootlaces          "0.1.10"         :scope "test"]])
 
