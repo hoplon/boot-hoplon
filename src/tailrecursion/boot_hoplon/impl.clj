@@ -1,10 +1,10 @@
 (ns tailrecursion.boot-hoplon.impl
   (:require
-    [boot.util                              :as util]
-    [clojure.pprint                         :as pp]
-    [clojure.java.io                        :as io]
-    [clojure.string                         :as string]
-    [clojure.java.shell                     :as sh]
+    [boot.util                          :as util]
+    [clojure.pprint                     :as pp]
+    [clojure.java.io                    :as io]
+    [clojure.string                     :as string]
+    [clojure.java.shell                 :as sh]
     [tailrecursion.boot-hoplon.compiler :as hl]
     [tailrecursion.boot-hoplon.tagsoup  :as ts]))
 
