@@ -38,9 +38,9 @@ page.open(uri, function(status) {
   [e engine ENGINE str "PhantomJS-compatible engine to use."]
   (let [engine       (or engine "phantomjs")
         pod          (future @hoplon-pod)
-        tmp          (boot/temp-dir!)
+        tmp          (boot/tmp-dir!)
         prev-fileset (atom nil)
-        rjs-tmp      (boot/temp-dir!)
+        rjs-tmp      (boot/tmp-dir!)
         rjs-path     (.getPath (io/file rjs-tmp "render.js"))]
     (spit rjs-path renderjs)
     (boot/with-pre-wrap fileset
@@ -48,7 +48,7 @@ page.open(uri, function(status) {
                       (boot/fileset-diff @prev-fileset)
                       boot/output-files
                       (boot/by-ext [".html"])
-                      (map (juxt boot/tmppath (comp (memfn getPath) boot/tmpfile))))]
+                      (map (juxt boot/tmp-path (comp (memfn getPath) boot/tmp-file))))]
         (reset! prev-fileset fileset)
         (pod/with-call-in @pod
           (tailrecursion.boot-hoplon.impl/prerender ~engine ~(.getPath tmp) ~rjs-path ~html))
@@ -69,8 +69,8 @@ page.open(uri, function(status) {
   [pp pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
    l  lib          bool "Include produced cljs in the final artefact."]
   (let [prev-fileset (atom nil)
-        tmp-cljs     (boot/temp-dir!)
-        tmp-html     (boot/temp-dir!)
+        tmp-cljs     (boot/tmp-dir!)
+        tmp-html     (boot/tmp-dir!)
         opts         (dissoc *opts* :lib)
         pod          (future @hoplon-pod)
         add-cljs     (if lib boot/add-resource boot/add-source)]
@@ -79,7 +79,7 @@ page.open(uri, function(status) {
                     (boot/fileset-diff @prev-fileset)
                     boot/input-files
                     (boot/by-ext [".hl"])
-                    (map (juxt boot/tmppath (comp (memfn getPath) boot/tmpfile))))]
+                    (map (juxt boot/tmp-path (comp (memfn getPath) boot/tmp-file))))]
         (reset! prev-fileset fileset)
         (pod/with-call-in @pod
           (tailrecursion.boot-hoplon.impl/hoplon ~(.getPath tmp-cljs) ~(.getPath tmp-html) ~hl ~opts)))
@@ -96,14 +96,14 @@ page.open(uri, function(status) {
 (boot/deftask haml
   "Convert .hl.haml files to .cljs.hl format."
   []
-  (let [tmp  (boot/temp-dir!)
+  (let [tmp  (boot/tmp-dir!)
         diff (atom nil)]
     (boot/with-pre-wrap fileset
       (let [haml (->> fileset
                       (boot/fileset-diff @diff)
                       boot/input-files
                       (boot/by-ext [".hl.haml"])
-                      (map (juxt boot/tmppath boot/tmpfile)))]
+                      (map (juxt boot/tmp-path boot/tmp-file)))]
         (reset! diff fileset)
         (doseq [[p in] haml]
           (let [p   (.replaceAll p "\\.hl\\.haml$" ".cljs.hl")
