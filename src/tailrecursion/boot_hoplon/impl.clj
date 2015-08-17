@@ -33,9 +33,11 @@
               head (concat head1 (rm-scripts head2))
               batt (merge batt1 batt2)
               body (concat (rm-scripts body2) body1)
-              merged `(~'html ~att (~'head ~hatt ~@head) (~'body ~batt ~@body))]
+              merged `(~'html ~att (~'head ~hatt ~@head) (~'body ~batt ~@body))
+              prerendered-path (io/file output-dir out-path)]
           (util/info "• %s\n" out-path)
-          (spit (io/file output-dir out-path) (ts/print-page "html" merged)))))))
+          (io/make-parents prerendered-path)
+          (spit prerendered-path (ts/print-page "html" merged)))))))
 
 (defn hoplon [cljs-dir html-dir hl-files opts]
   (util/info "Compiling Hoplon pages...\n")
