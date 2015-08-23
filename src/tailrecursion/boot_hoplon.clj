@@ -18,7 +18,7 @@
 var page = require('webpage').create(),
     sys  = require('system'),
     path = sys.args[1]
-    uri  = \"file://\" + path;
+    uri  = \"file://\" + path + \"?prerendering=1\";
 page.open(uri, function(status) {
   setTimeout(function() {
     var html = page.evaluate(function() {
@@ -39,17 +39,14 @@ page.open(uri, function(status) {
   (let [engine       (or engine "phantomjs")
         pod          (future @hoplon-pod)
         tmp          (boot/tmp-dir!)
-        prev-fileset (atom nil)
         rjs-tmp      (boot/tmp-dir!)
         rjs-path     (.getPath (io/file rjs-tmp "render.js"))]
     (spit rjs-path renderjs)
     (boot/with-pre-wrap fileset
       (let [html (->> fileset
-                      (boot/fileset-diff @prev-fileset)
                       boot/output-files
                       (boot/by-ext [".html"])
                       (map (juxt boot/tmp-path (comp (memfn getPath) boot/tmp-file))))]
-        (reset! prev-fileset fileset)
         (pod/with-call-in @pod
           (tailrecursion.boot-hoplon.impl/prerender ~engine ~(.getPath tmp) ~rjs-path ~html))
         (-> fileset (boot/add-resource tmp) boot/commit!)))))
