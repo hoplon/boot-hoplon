@@ -10,6 +10,7 @@
   {:boot/export-tasks true}
   (:require [boot.core                      :as boot]
             [boot.pod                       :as pod]
+            [boot.util                      :as util]
             [clojure.java.io                :as io]
             [tailrecursion.boot-hoplon.haml :as haml]))
 
@@ -34,6 +35,30 @@ page.open(uri, function(status) {
                                 io/resource slurp read-string)
                             (update-in pod/env [:dependencies] into)))))
 
+(defn bust-cache
+  [path]
+  (pod/with-eval-in @hoplon-pod
+    (require 'tailrecursion.hoplon)
+    (tailrecursion.hoplon/bust-cache ~path)))
+
+(defn- by-path
+  [paths tmpfiles]
+  (boot/by-re (mapv #(re-pattern (str "^\\Q" % "\\E$")) paths) tmpfiles))
+
+(boot/deftask bust-caches
+  [p paths PATH #{str} "The set of paths to add cache-busting uuids to."]
+  (let [tmp (boot/tmp-dir!)]
+    (boot/with-pre-wrap fs
+      (let [msg (delay (util/info "Busting cache...\n"))]
+        (->> (boot/output-files fs)
+             (by-path paths)
+             (seq)
+             (reduce (fn [fs {:keys [path]}]
+                       @msg
+                       (util/info "• %s\n" path)
+                       (boot/mv fs path (bust-cache path)))
+                     fs))))))
+
 (boot/deftask prerender
   [e engine ENGINE str "PhantomJS-compatible engine to use."]
   (let [engine       (or engine "phantomjs")
@@ -52,19 +77,10 @@ page.open(uri, function(status) {
         (-> fileset (boot/add-resource tmp) boot/commit!)))))
 
 (boot/deftask hoplon
-  "Build Hoplon web application.
-
-  This task accepts an optional map of options to pass to the Hoplon compiler.
-  Further ClojureScript compilation rely on another task (e. g. boot-cljs).
-  The Hoplon compiler recognizes the following options:
-
-  * :pretty-print  If set to `true` enables pretty-printed output
-  in the ClojureScript files created by the Hoplon compiler.
-
-  If you are compiling library, you need to include resulting cljs in target.
-  Do it by specifying :lib flag."
-  [pp pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
-   l  lib          bool "Include produced cljs in the final artefact."]
+  "Build Hoplon web application."
+  [p  pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
+   l  lib          bool "Include produced cljs in the final artifact."
+   b  bust-cache   bool "Add cache-busting uuid to JavaScript file name?"]
   (let [prev-fileset (atom nil)
         tmp-cljs     (boot/tmp-dir!)
         tmp-html     (boot/tmp-dir!)

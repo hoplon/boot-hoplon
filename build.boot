@@ -3,14 +3,14 @@
   ;; versions that not yet propagated to Clojars
   ;; :repositories #(conj % '["sonatype" {:url "http://oss.sonatype.org/content/repositories/releases"}])
   :dependencies '[[org.clojure/clojure       "1.6.0"          :scope "provided"]
-                  [tailrecursion/hoplon      "6.0.0-alpha6"   :scope "test"]
+                  [tailrecursion/hoplon      "6.0.0-alpha7"   :scope "test"]
                   [adzerk/bootlaces          "0.1.10"         :scope "test"]])
 
 (require
   '[clojure.java.io :as io]
   '[adzerk.bootlaces :refer :all])
 
-(def +version+ "0.1.3")
+(def +version+ "0.1.4")
 
 (bootlaces! +version+ :dev-dependencies "tailrecursion/boot_hoplon/pod_deps.edn")
 

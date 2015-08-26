@@ -11,6 +11,7 @@
     [clojure.pprint :as pp]
     [clojure.java.io :as io]
     [clojure.string :as str]
+    [tailrecursion.hoplon :as hl]
     [tailrecursion.boot-hoplon.tagsoup :as tags]
     [tailrecursion.boot-hoplon.util :as util]
     [tailrecursion.boot-hoplon.refer :as refer]))
@@ -75,7 +76,7 @@
 (defn ns->path [ns]
   (-> ns munge (str/replace \. \/) (str ".cljs")))
 
-(defn compile-forms [forms]
+(defn compile-forms [forms & {:keys [bust-cache]}]
   (let [[nsdecl & tlfs] forms]
     (if (= 'ns (first nsdecl))
       {:cljs (forms-str (cons (make-nsdecl nsdecl) tlfs)) :ns (second nsdecl)}
@@ -86,7 +87,8 @@
                       (let [[h _ & t] (make-nsdecl nsdecl)]
                         `((~h ~page-ns ~@t) ~@tlfs)))]
         (if (string? page)
-          (let [js-uri (-> outpath (str/split #"/") last (str ".js"))
+          (let [js-out (if-not bust-cache outpath (hl/bust-cache outpath))
+                js-uri (-> js-out (str/split #"/") last (str ".js"))
                 script-src #(list 'script {:type "text/javascript" :src (str %)})
                 s-html     `(~'html {}
                               (~'head {}
@@ -96,7 +98,7 @@
                 htmlstr (tags/print-page "html" s-html)
                 edn {:require  [(symbol page-ns)]}
                 ednstr (pr-str edn)]
-            {:html htmlstr :edn ednstr :cljs cljsstr :ns page-ns :file outpath})
+            {:html htmlstr :edn ednstr :cljs cljsstr :ns page-ns :file outpath :js-file js-out})
           {:cljs cljsstr :ns page-ns})))))
 
 (defn pp [form] (pp/write form :dispatch pp/code-dispatch))
@@ -107,16 +109,16 @@
 
 (defn compile-string
   [forms-str cljsdir htmldir & {:keys [opts]}]
-  (let [{:keys [pretty-print]} opts
-        {:keys [cljs ns html edn file]}
+  (let [{:keys [pretty-print bust-cache]} opts
+        {:keys [cljs ns html edn file js-file]}
         (when-let [forms (as-forms forms-str)]
           (binding [*printer* (if pretty-print pp prn)]
-            (compile-forms forms)))
+            (compile-forms forms :bust-cache bust-cache)))
         cljs-out (io/file cljsdir (ns->path ns))]
     (write cljs-out cljs)
     (when file
       (let [html-out (io/file htmldir file)
-            edn-out  (io/file cljsdir (str file ".cljs.edn"))]
+            edn-out  (io/file cljsdir (str js-file ".cljs.edn"))]
         (write edn-out edn)
         (write html-out html)))))
 
