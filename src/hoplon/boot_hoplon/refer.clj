@@ -6,7 +6,7 @@
 ;; the terms of this license.
 ;; You must not remove this notice, or any other, from this software.
 
-(ns tailrecursion.boot-hoplon.refer
+(ns hoplon.boot-hoplon.refer
   (:require
     [clojure.pprint  :as p]
     [clojure.string  :as s]

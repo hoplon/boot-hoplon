@@ -1,4 +1,4 @@
-(ns tailrecursion.boot-hoplon.util
+(ns hoplon.boot-hoplon.util
   (:refer-clojure :exclude [read-string])
   (:require
    [clojure.string :as string]
@@ -19,7 +19,7 @@
   (-> (str "_" (name x)) (string/replace #"\." "_DOT_") munge))
 
 (defn munge-page [ns]
-  (let [ap "tailrecursion.hoplon.app-pages."]
+  (let [ap "hoplon.app-pages."]
     (if (symbol? ns) ns (symbol (str ap (munge-page-name ns))))))
 
 (defn get-ns [forms-str]

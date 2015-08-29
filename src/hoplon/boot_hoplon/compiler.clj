@@ -6,15 +6,15 @@
 ;; the terms of this license.
 ;; You must not remove this notice, or any other, from this software.
 
-(ns tailrecursion.boot-hoplon.compiler
+(ns hoplon.boot-hoplon.compiler
   (:require
-    [clojure.pprint :as pp]
-    [clojure.java.io :as io]
-    [clojure.string :as str]
-    [tailrecursion.hoplon :as hl]
-    [tailrecursion.boot-hoplon.tagsoup :as tags]
-    [tailrecursion.boot-hoplon.util :as util]
-    [tailrecursion.boot-hoplon.refer :as refer]))
+    [clojure.pprint             :as pp]
+    [clojure.java.io            :as io]
+    [clojure.string             :as str]
+    [hoplon.core                :as hl]
+    [hoplon.boot-hoplon.tagsoup :as tags]
+    [hoplon.boot-hoplon.util    :as util]
+    [hoplon.boot-hoplon.refer   :as refer]))
 
 (def ^:dynamic *printer* prn)
 
@@ -52,7 +52,7 @@
 (defn make-nsdecl
   [[_ ns-sym & forms]]
   (let [ns-sym (symbol ns-sym)
-        ns-syms '#{tailrecursion.hoplon tailrecursion.javelin}
+        ns-syms '#{hoplon.core javelin.core}
         rm? #(or (contains? ns-syms %) (and (seq %) (contains? ns-syms (first %))))
         mk-req #(concat (remove rm? %2) (map %1 ns-syms (repeat %3)))
         clauses (->> (tree-seq list? seq forms) (filter list?) (group-by first))

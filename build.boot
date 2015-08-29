@@ -2,24 +2,24 @@
   ;; using the sonatype repo is sometimes useful when testing Clojurescript
   ;; versions that not yet propagated to Clojars
   ;; :repositories #(conj % '["sonatype" {:url "http://oss.sonatype.org/content/repositories/releases"}])
-  :dependencies '[[org.clojure/clojure       "1.6.0"          :scope "provided"]
-                  [tailrecursion/hoplon      "6.0.0-alpha7"   :scope "test"]
-                  [adzerk/bootlaces          "0.1.10"         :scope "test"]])
+  :dependencies '[[org.clojure/clojure "1.7.0"          :scope "provided"]
+                  [hoplon              "6.0.0-alpha9"   :scope "test"]
+                  [adzerk/bootlaces    "0.1.10"         :scope "test"]])
 
 (require
   '[clojure.java.io :as io]
   '[adzerk.bootlaces :refer :all])
 
-(def +version+ "0.1.4")
+(def +version+ "0.1.5")
 
-(bootlaces! +version+ :dev-dependencies "tailrecursion/boot_hoplon/pod_deps.edn")
+(bootlaces! +version+ :dev-dependencies "hoplon/boot_hoplon/pod_deps.edn")
 
-(require '[tailrecursion.boot-hoplon :refer :all])
+(require '[hoplon.boot-hoplon :refer :all])
 
 (task-options!
-  pom  {:project     'tailrecursion/boot-hoplon
+  pom  {:project     'hoplon/boot-hoplon
         :version     +version+
         :description "Boot task for the Hoplon web development environment."
-        :url         "https://github.com/tailrecursion/boot-hoplon"
-        :scm         {:url "https://github.com/tailrecursion/boot-hoplon"}
+        :url         "https://github.com/hoplon/boot-hoplon"
+        :scm         {:url "https://github.com/hoplon/boot-hoplon"}
         :license     {"Eclipse Public License" "http://www.eclipse.org/legal/epl-v10.html"}})

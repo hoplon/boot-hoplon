@@ -6,7 +6,7 @@
 ;; the terms of this license.
 ;; You must not remove this notice, or any other, from this software.
 
-(ns tailrecursion.boot-hoplon.tagsoup
+(ns hoplon.boot-hoplon.tagsoup
   (:refer-clojure :exclude [replace])
   (:require
     [pl.danieljanus.tagsoup :as ts]

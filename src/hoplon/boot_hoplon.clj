@@ -6,13 +6,12 @@
 ;; the terms of this license.
 ;; You must not remove this notice, or any other, from this software.
 
-(ns tailrecursion.boot-hoplon
+(ns hoplon.boot-hoplon
   {:boot/export-tasks true}
   (:require [boot.core                      :as boot]
             [boot.pod                       :as pod]
             [boot.util                      :as util]
-            [clojure.java.io                :as io]
-            [tailrecursion.boot-hoplon.haml :as haml]))
+            [clojure.java.io                :as io]))
 
 (def ^:private renderjs
   "
@@ -31,15 +30,15 @@ page.open(uri, function(status) {
 });")
 
 (def hoplon-pod
-  (delay (pod/make-pod (->> (-> "tailrecursion/boot_hoplon/pod_deps.edn"
+  (delay (pod/make-pod (->> (-> "hoplon/boot_hoplon/pod_deps.edn"
                                 io/resource slurp read-string)
                             (update-in pod/env [:dependencies] into)))))
 
 (defn bust-cache
   [path]
   (pod/with-eval-in @hoplon-pod
-    (require 'tailrecursion.hoplon)
-    (tailrecursion.hoplon/bust-cache ~path)))
+    (require 'hoplon.core)
+    (hoplon.core/bust-cache ~path)))
 
 (defn- by-path
   [paths tmpfiles]
@@ -73,7 +72,7 @@ page.open(uri, function(status) {
                       (boot/by-ext [".html"])
                       (map (juxt boot/tmp-path (comp (memfn getPath) boot/tmp-file))))]
         (pod/with-call-in @pod
-          (tailrecursion.boot-hoplon.impl/prerender ~engine ~(.getPath tmp) ~rjs-path ~html))
+          (hoplon.boot-hoplon.impl/prerender ~engine ~(.getPath tmp) ~rjs-path ~html))
         (-> fileset (boot/add-resource tmp) boot/commit!)))))
 
 (boot/deftask hoplon
@@ -95,7 +94,7 @@ page.open(uri, function(status) {
                     (map (juxt boot/tmp-path (comp (memfn getPath) boot/tmp-file))))]
         (reset! prev-fileset fileset)
         (pod/with-call-in @pod
-          (tailrecursion.boot-hoplon.impl/hoplon ~(.getPath tmp-cljs) ~(.getPath tmp-html) ~hl ~opts)))
+          (hoplon.boot-hoplon.impl/hoplon ~(.getPath tmp-cljs) ~(.getPath tmp-html) ~hl ~opts)))
       (-> fileset (add-cljs tmp-cljs) (boot/add-resource tmp-html) boot/commit!))))
 
 (boot/deftask html2cljs
@@ -103,23 +102,5 @@ page.open(uri, function(status) {
   [f file FILENAME str "File to convert."]
   (let [pod (future @hoplon-pod)]
     (boot/with-pre-wrap fileset
-      (print (pod/with-call-in @pod (tailrecursion.boot-hoplon.impl/html2cljs ~file)))
+      (print (pod/with-call-in @pod (hoplon.boot-hoplon.impl/html2cljs ~file)))
       fileset)))
-
-(boot/deftask haml
-  "Convert .hl.haml files to .cljs.hl format."
-  []
-  (let [tmp  (boot/tmp-dir!)
-        diff (atom nil)]
-    (boot/with-pre-wrap fileset
-      (let [haml (->> fileset
-                      (boot/fileset-diff @diff)
-                      boot/input-files
-                      (boot/by-ext [".hl.haml"])
-                      (map (juxt boot/tmp-path boot/tmp-file)))]
-        (reset! diff fileset)
-        (doseq [[p in] haml]
-          (let [p   (.replaceAll p "\\.hl\\.haml$" ".cljs.hl")
-                out (doto (io/file tmp p) io/make-parents)]
-            (->> in slurp haml/parse-string (map pr-str) (apply str) (spit out))))
-        (-> fileset (boot/add-source tmp) boot/commit!)))))

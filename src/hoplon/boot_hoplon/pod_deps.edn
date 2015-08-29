@@ -1,0 +1,2 @@
+[[clj-tagsoup                  "0.3.0"]
+ [org.clojure/tools.reader     "0.8.13"]]

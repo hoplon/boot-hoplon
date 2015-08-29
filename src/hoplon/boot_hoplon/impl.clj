@@ -1,12 +1,12 @@
-(ns tailrecursion.boot-hoplon.impl
+(ns hoplon.boot-hoplon.impl
   (:require
     [boot.util                              :as util]
     [clojure.pprint                         :as pp]
     [clojure.java.io                        :as io]
     [clojure.string                         :as string]
     [clojure.java.shell                     :as sh]
-    [tailrecursion.boot-hoplon.compiler :as hl]
-    [tailrecursion.boot-hoplon.tagsoup  :as ts]))
+    [hoplon.boot-hoplon.compiler :as hl]
+    [hoplon.boot-hoplon.tagsoup  :as ts]))
 
 (defn prerender [engine output-dir render-js-path html-files]
   (let [win?      (#{"Windows_NT"} (System/getenv "OS"))
