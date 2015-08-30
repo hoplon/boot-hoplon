@@ -14,9 +14,19 @@
     [hoplon.core                :as hl]
     [hoplon.boot-hoplon.tagsoup :as tags]
     [hoplon.boot-hoplon.util    :as util]
-    [hoplon.boot-hoplon.refer   :as refer]))
+    [hoplon.boot-hoplon.refer   :as refer])
+  (:import
+    [clojure.lang LineNumberingPushbackReader]
+    [java.io PushbackReader BufferedReader StringReader]))
 
 (def ^:dynamic *printer* prn)
+
+(defn read-string-1
+  [x]
+  (when x
+    (with-open [r (LineNumberingPushbackReader. (StringReader. x))]
+      [(read r false nil)
+       (apply str (concat (repeat (dec (.getLineNumber r)) "\n") [(slurp r)]))])))
 
 (defn up-parents [path name]
   (let [[f & dirs] (str/split path #"/")]
@@ -41,13 +51,13 @@
             (let [i (if-not (empty? txt) i (count (re-find pad line)))]
               (recur (conj txt (unpad line i)) i lines out))))))))
 
-(defn as-forms [s]
-  (if (= \< (first (str/trim s)))
-    (tags/parse-string (inline-code s tags/html-escape))
-    (util/read-string (inline-code s pr-str))))
+(defn ->cljs-str [s]
+  (if (not= \< (first (str/trim s)))
+    s
+    (tags/parse-string (inline-code s tags/html-escape))))
 
 (defn output-path [forms] (-> forms first second str))
-(defn output-path-for [path] (-> path slurp as-forms output-path))
+(defn output-path-for [path] (-> path slurp ->cljs-str output-path))
 
 (defn make-nsdecl
   [[_ ns-sym & forms]]
@@ -67,36 +77,32 @@
         others (->> forms (filter list?) (filter other?))]
     `(~'ns ~ns-sym ~@others ~reqs ~macros)))
 
-(defn forms-str [forms]
-  (str/join "\n" (map #(binding [*print-meta* true] (with-out-str (*printer* %))) forms)))
+(defn forms-str [ns-form body]
+  (str (binding [*print-meta* true] (pr-str ns-form)) body))
 
 (defn ns->path [ns]
   (-> ns munge (str/replace \. \/) (str ".cljs")))
 
-(defn compile-forms [forms & {:keys [bust-cache]}]
-  (let [[nsdecl & tlfs] forms]
-    (if (= 'ns (first nsdecl))
-      {:cljs (forms-str (cons (make-nsdecl nsdecl) tlfs)) :ns (second nsdecl)}
-      (let [[_ page & _] nsdecl
-            outpath (output-path forms)
-            page-ns (util/munge-page page)
-            cljsstr (forms-str
-                      (let [[h _ & t] (make-nsdecl nsdecl)]
-                        `((~h ~page-ns ~@t) ~@tlfs)))]
-        (if (string? page)
-          (let [js-out (if-not bust-cache outpath (hl/bust-cache outpath))
-                js-uri (-> js-out (str/split #"/") last (str ".js"))
-                script-src #(list 'script {:type "text/javascript" :src (str %)})
-                s-html     `(~'html {}
-                              (~'head {}
-                                (~'meta {:charset "utf-8"}))
-                              (~'body {}
-                                ~(script-src js-uri)))
-                htmlstr (tags/print-page "html" s-html)
-                edn {:require  [(symbol page-ns)]}
-                ednstr (pr-str edn)]
-            {:html htmlstr :edn ednstr :cljs cljsstr :ns page-ns :file outpath :js-file js-out})
-          {:cljs cljsstr :ns page-ns})))))
+(defn compile-forms [nsdecl body & {:keys [bust-cache]}]
+  (case (first nsdecl)
+    ns   {:cljs (forms-str (make-nsdecl nsdecl) body) :ns (second nsdecl)}
+    page (let [[_ page & _] nsdecl
+               outpath     (output-path [nsdecl])
+               page-ns     (util/munge-page page)
+               cljsstr     (let [[h _ & t] (make-nsdecl nsdecl)]
+                             (forms-str (list* h page-ns t) body)) 
+               js-out      (if-not bust-cache outpath (hl/bust-cache outpath))
+               js-uri      (-> js-out (str/split #"/") last (str ".js"))
+               script-src  #(list 'script {:type "text/javascript" :src (str %)})
+               s-html      `(~'html {}
+                                    (~'head {}
+                                            (~'meta {:charset "utf-8"}))
+                                    (~'body {}
+                                            ~(script-src js-uri)))
+               htmlstr     (tags/print-page "html" s-html)
+               edn         {:require  [(symbol page-ns)]}
+               ednstr      (pr-str edn)]
+           {:html htmlstr :edn ednstr :cljs cljsstr :ns page-ns :file outpath :js-file js-out})))
 
 (defn pp [form] (pp/write form :dispatch pp/code-dispatch))
 
@@ -106,11 +112,10 @@
 
 (defn compile-string
   [forms-str cljsdir htmldir & {:keys [opts]}]
-  (let [{:keys [pretty-print bust-cache]} opts
+  (let [{:keys [bust-cache]} opts
+        [ns-form body] (read-string-1 (->cljs-str forms-str))
         {:keys [cljs ns html edn file js-file]}
-        (when-let [forms (as-forms forms-str)]
-          (binding [*printer* (if pretty-print pp prn)]
-            (compile-forms forms :bust-cache bust-cache)))
+        (compile-forms ns-form body :bust-cache bust-cache)
         cljs-out (io/file cljsdir (ns->path ns))]
     (write cljs-out cljs)
     (when file

@@ -46,7 +46,7 @@
     (hl/compile-file (io/file in-path) (io/file cljs-dir) (io/file html-dir) :opts opts)))
 
 (defn html2cljs [file]
-  (->> file slurp hl/as-forms
+  (->> file slurp hl/->cljs-str
        (#(with-out-str (pp/write % :dispatch pp/code-dispatch)))
        clojure.string/trim
        (#(subs % 1 (dec (count %))))))
