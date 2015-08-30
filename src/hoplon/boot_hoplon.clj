@@ -75,27 +75,55 @@ page.open(uri, function(status) {
           (hoplon.boot-hoplon.impl/prerender ~engine ~(.getPath tmp) ~rjs-path ~html))
         (-> fileset (boot/add-resource tmp) boot/commit!)))))
 
+(defn- write-manifest!
+  [fileset dir]
+  (let [msg (delay (util/info "Writing Hoplon manifest...\n"))
+        out (io/file dir "hoplon" "manifest.edn")]
+    (when-let [hls (seq (->> fileset
+                             boot/output-files
+                             (boot/by-ext [".hl"])
+                             (map boot/tmp-path)))]
+      @msg
+      (doseq [h hls] (util/info "• %s\n" h))
+      (spit (doto out io/make-parents) (pr-str (vec hls))))
+    (boot/add-resource fileset dir)))
+
+(defn- extract-deps!
+  [dir]
+  (let [msg (delay (util/info "Extracting Hoplon dependencies...\n"))
+        mfs (->> "hoplon/manifest.edn" pod/resources)]
+    (doseq [path (mapcat (comp read-string slurp) mfs)]
+      @msg
+      (util/info "• %s\n" path)
+      (pod/copy-resource path (io/file dir path)))))
+
 (boot/deftask hoplon
   "Build Hoplon web application."
-  [p  pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
-   l  lib          bool "Include produced cljs in the final artifact."
-   b  bust-cache   bool "Add cache-busting uuid to JavaScript file name?"]
+  [p pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
+   b bust-cache   bool "Add cache-busting uuid to JavaScript file name."
+   m manifest     bool "Create Hoplon manifest for jars that include .hl files."]
   (let [prev-fileset (atom nil)
+        tmp-hl       (boot/tmp-dir!)
         tmp-cljs     (boot/tmp-dir!)
         tmp-html     (boot/tmp-dir!)
         opts         (dissoc *opts* :lib)
         pod          (future @hoplon-pod)
-        add-cljs     (if lib boot/add-resource boot/add-source)]
-    (boot/with-pre-wrap fileset
-      (let [hl (->> fileset
-                    (boot/fileset-diff @prev-fileset)
-                    boot/input-files
-                    (boot/by-ext [".hl"])
-                    (map (juxt boot/tmp-path (comp (memfn getPath) boot/tmp-file))))]
-        (reset! prev-fileset fileset)
-        (pod/with-call-in @pod
-          (hoplon.boot-hoplon.impl/hoplon ~(.getPath tmp-cljs) ~(.getPath tmp-html) ~hl ~opts)))
-      (-> fileset (add-cljs tmp-cljs) (boot/add-resource tmp-html) boot/commit!))))
+        extract!     (delay (extract-deps! tmp-hl))]
+    (if manifest
+      (boot/with-pre-wrap fileset
+        (-> fileset (write-manifest! tmp-hl) boot/commit!))
+      (boot/with-pre-wrap fileset
+        @extract!
+        (let [fileset (-> fileset (boot/add-source tmp-hl) boot/commit!)
+              hls     (->> fileset
+                           (boot/fileset-diff @prev-fileset)
+                           boot/input-files
+                           (boot/by-ext [".hl"])
+                           (map (juxt boot/tmp-path #(.getPath (boot/tmp-file %)))))]
+          (reset! prev-fileset fileset)
+          (pod/with-call-in @pod
+            (hoplon.boot-hoplon.impl/hoplon ~(.getPath tmp-cljs) ~(.getPath tmp-html) ~hls ~opts)))
+        (-> fileset (boot/add-source tmp-cljs) (boot/add-resource tmp-html) boot/commit!)))))
 
 (boot/deftask html2cljs
   "Convert file from html syntax to cljs syntax."

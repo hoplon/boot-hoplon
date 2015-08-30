@@ -70,9 +70,6 @@
 (defn forms-str [forms]
   (str/join "\n" (map #(binding [*print-meta* true] (with-out-str (*printer* %))) forms)))
 
-(defn compile-lib [[[ns* & _ :as nsdecl] & tlfs]]
-  (when (= 'ns ns*) (forms-str (cons (make-nsdecl nsdecl) tlfs))))
-
 (defn ns->path [ns]
   (-> ns munge (str/replace \. \/) (str ".cljs")))
 

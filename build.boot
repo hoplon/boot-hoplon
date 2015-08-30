@@ -10,7 +10,7 @@
   '[clojure.java.io :as io]
   '[adzerk.bootlaces :refer :all])
 
-(def +version+ "0.1.5")
+(def +version+ "0.1.6")
 
 (bootlaces! +version+ :dev-dependencies "hoplon/boot_hoplon/pod_deps.edn")
 
