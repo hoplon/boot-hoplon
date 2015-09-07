@@ -24,11 +24,13 @@
 (defn get-publics* [ns]
   (binding [a/*analyze-deps* false
             a/*cljs-warnings* nil]
-    (let [macro? #(boolean (:macro (second %)))
-          type? #(some identity ((juxt :type :record) (second %)))
+    (let [macro?    #(boolean (:macro (second %)))
+          type?     #(some identity ((juxt :type :record) (second %)))
           protocol? #(->> % second :meta
                           ((juxt :protocol :protocol-symbol :protocol-info))
                           (some identity))
+          rm-meta   #(with-meta % nil)
+          names     #(->> % (map (comp rm-meta first)) sort)
           {macros true defs false}
           (ana/with-state st
             (do (ana/analyze-file (nsym->path ns "cljs"))
@@ -36,7 +38,7 @@
                      (remove protocol?)
                      (remove type?)
                      (group-by macro?))))]
-      {:macros (sort (map first macros)) :defs (sort (map first defs))})))
+      {:macros (names macros) :defs (names defs)})))
 
 (def get-publics (memoize get-publics*))
 
