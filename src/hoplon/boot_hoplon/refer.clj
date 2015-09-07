@@ -8,76 +8,43 @@
 
 (ns hoplon.boot-hoplon.refer
   (:require
-    [clojure.pprint  :as p]
-    [clojure.string  :as s]
-    [clojure.java.io :as io]
-    [clojure.walk    :refer [prewalk]]
-    [clojure.set     :refer [difference union]]))
-
-;; util ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmacro with-let
-  "Binds resource to binding and evaluates body.  Then, returns
-  resource.  It's a cross between doto and with-open."
-  [[binding resource] & body]
-  `(let [~binding ~resource] ~@body ~binding))
-
-;; mirroring ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    [cljs.analyzer     :as a]
+    [cljs.analyzer.api :as ana]
+    [clojure.set       :as set]
+    [clojure.string    :as string]))
 
 (defn nsym->path [sym ext]
   (-> (str sym)
-      (s/replace "." "/")
-      (s/replace "-" "_")
+      (string/replace "." "/")
+      (string/replace "-" "_")
       (str "." ext)))
 
-(defn all-list-forms [forms]
-  (filter list? (tree-seq coll? seq forms)))
+(def st (ana/empty-state))
 
-(defn read-file [f]
-  (with-open [in (java.io.PushbackReader. (io/reader f))]
-    (->> (repeatedly #(read in false ::eof))
-         (take-while (partial not= ::eof))
-         doall)))
+(defn get-publics* [ns]
+  (binding [a/*analyze-deps* false
+            a/*cljs-warnings* nil]
+    (let [macro? #(boolean (:macro (second %)))
+          type? #(some identity ((juxt :type :record) (second %)))
+          protocol? #(->> % second :meta
+                          ((juxt :protocol :protocol-symbol :protocol-info))
+                          (some identity))
+          {macros true defs false}
+          (ana/with-state st
+            (do (ana/analyze-file (nsym->path ns "cljs"))
+                (->> (ana/ns-publics ns)
+                     (remove protocol?)
+                     (remove type?)
+                     (group-by macro?))))]
+      {:macros (sort (map first macros)) :defs (sort (map first defs))})))
 
-(defn ops-in [op-sym sym ext]
-  (let [ns-file (io/resource (nsym->path sym ext))]
-    (->>
-     (read-file ns-file)
-     list*
-     (tree-seq coll? seq)
-     (filter list?)
-     (filter (comp (partial = op-sym) first))
-     (mapv second))))
-
-(defn mirrored-defs [ns-sym]
-  (let [remote-defs (ops-in 'def ns-sym "cljs")]
-    (map (fn [r] `(def ~r ~(symbol (str ns-sym) (str r)))) remote-defs)))
-
-(defn mirrored-defns [ns-sym]
-  (let [remote-defns (ops-in 'defn ns-sym "cljs")]
-    (map (fn [r] `(defn ~r [& args#]
-                    (apply ~(symbol (str ns-sym) (str r)) args#)))
-         remote-defns)))
-
-(defn mirror-def-all [ns-sym & {:keys [syms]}]
-  (let [syms (distinct (into ['def 'defn 'defmulti] syms)) 
-        defs (mapcat ops-in syms (repeat ns-sym) (repeat "cljs"))]
-    (map (fn [r] `(def ~r ~(symbol (str ns-sym) (str r)))) defs)))
+(def get-publics (memoize get-publics*))
 
 (defn exclude [ops exclusions]
-  (vec (difference (set ops) (set exclusions))))
+  (vec (set/difference (set ops) (set exclusions))))
 
 (defn make-require [ns-sym & [exclusions]]
-  (let [syms ['def 'defn 'defmulti]
-        ops  (mapcat ops-in syms (repeat ns-sym) (repeat "cljs"))]
-    [ns-sym :refer (exclude ops exclusions)]))
+  [ns-sym :refer (exclude (:defs (get-publics ns-sym)) exclusions)])
 
 (defn make-require-macros [ns-sym & [exclusions]]
-  [ns-sym :refer (exclude (ops-in 'defmacro ns-sym "clj") exclusions)])
-
-(defmacro mirror [ns-sym]
-  `(do ~@(mirrored-defs  ns-sym)
-       ~@(mirrored-defns ns-sym)))
-
-(defmacro refer-all [ns-sym & more]
-  `(do ~@(apply mirror-def-all ns-sym more)))
+  [ns-sym :refer (exclude (:macros (get-publics ns-sym)) exclusions)])
