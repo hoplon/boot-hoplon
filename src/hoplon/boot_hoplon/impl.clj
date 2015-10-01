@@ -13,8 +13,8 @@
         phantom?  (= 0 (:exit (sh/sh (if win? "where" "which") engine)))
         phantom!  #(let [{:keys [exit out err]} (sh/sh engine %1 %2)
                          warn? (and (zero? exit) (not (empty? err)))]
-                    (when warn? (println (string/trimr err)))
-                    (if (= 0 exit) out (throw (Exception. err))))
+                     (when warn? (println (string/trimr err)))
+                     (if (= 0 exit) out (throw (Exception. err))))
         doing-it  (delay (util/info "Prerendering HTML files...\n"))
         not-found #(util/info "Skipping prerender: %s not found on path.\n" engine)]
     (if (not phantom?)
@@ -26,8 +26,11 @@
               forms2 (-> (phantom! render-js-path in-path) ->frms)
               [_ att1 [_ hatt1 & head1] [_ batt1 & body1]] forms1
               [html* att2 [head* hatt2 & head2] [body* batt2 & body2]] forms2
-              script? (comp (partial = 'script) first)
-              rm-scripts #(remove script? %)
+              not-script? (fn [[tag {:keys [prerender-keep] :as attr} & kids :as e]]
+                            (or (and (not= tag 'script) e)
+                                (when prerender-keep
+                                  (list* tag (dissoc attr :prerender-keep) kids))))
+              rm-scripts #(keep not-script? %)
               att (merge att1 att2)
               hatt (merge hatt1 hatt2)
               head (concat head1 (rm-scripts head2))
