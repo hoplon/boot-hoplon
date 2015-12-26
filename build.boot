@@ -5,13 +5,13 @@
   :dependencies '[[org.clojure/clojure       "1.7.0"        :scope "provided"]
                   [org.clojure/clojurescript "1.7.122"      :scope "test"]
                   [hoplon                    "6.0.0-alpha9" :scope "test"]
-                  [adzerk/bootlaces          "0.1.10"       :scope "test"]])
+                  [adzerk/bootlaces          "0.1.13"       :scope "test"]])
 
 (require
   '[clojure.java.io :as io]
   '[adzerk.bootlaces :refer :all])
 
-(def +version+ "0.1.9")
+(def +version+ "0.1.11")
 
 (bootlaces! +version+ :dev-dependencies "hoplon/boot_hoplon/pod_deps.edn")
 

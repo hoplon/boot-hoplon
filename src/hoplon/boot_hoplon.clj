@@ -8,10 +8,12 @@
 
 (ns hoplon.boot-hoplon
   {:boot/export-tasks true}
-  (:require [boot.core                      :as boot]
-            [boot.pod                       :as pod]
-            [boot.util                      :as util]
-            [clojure.java.io                :as io]))
+  (:require [boot.core        :as boot]
+            [boot.pod         :as pod]
+            [boot.util        :as util]
+            [boot.file        :as file]
+            [clojure.java.io  :as io]
+            [clojure.string   :as string]))
 
 (def ^:private renderjs
   "
@@ -75,6 +77,10 @@ page.open(uri, function(status) {
           (hoplon.boot-hoplon.impl/prerender ~engine ~(.getPath tmp) ~rjs-path ~html))
         (-> fileset (boot/add-resource tmp) boot/commit!)))))
 
+(defn- fspath->jarpath
+  [fspath]
+  (->> fspath file/split-path (string/join "/")))
+
 (defn- write-manifest!
   [fileset dir]
   (let [msg (delay (util/info "Writing Hoplon manifest...\n"))
@@ -82,7 +88,7 @@ page.open(uri, function(status) {
     (when-let [hls (seq (->> fileset
                              boot/output-files
                              (boot/by-ext [".hl"])
-                             (map boot/tmp-path)))]
+                             (map (comp fspath->jarpath boot/tmp-path))))]
       @msg
       (doseq [h hls] (util/info "• %s\n" h))
       (spit (doto out io/make-parents) (pr-str (vec hls))))
