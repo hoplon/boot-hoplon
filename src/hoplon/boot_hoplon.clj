@@ -124,7 +124,9 @@ page.open(uri, function(status) {
         (-> fileset (write-manifest! tmp-hl) boot/commit!))
       (boot/with-pre-wrap fileset
         @extract!
-        (let [fileset (-> fileset (boot/add-source tmp-hl) boot/commit!)
+        (let [fileset (-> fileset
+                          (boot/add-source tmp-hl :mergers pod/standard-jar-mergers)
+                          boot/commit!)
               hls     (->> fileset
                            (boot/fileset-diff @prev-fileset)
                            boot/input-files
