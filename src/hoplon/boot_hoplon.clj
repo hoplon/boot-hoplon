@@ -94,10 +94,14 @@ page.open(uri, function(status) {
       (spit (doto out io/make-parents) (pr-str (vec hls))))
     (boot/add-resource fileset dir)))
 
+(defn- jar-resource?
+  [url]
+  (= "jar" (.getProtocol url)))
+
 (defn- extract-deps!
   [dir]
   (let [msg (delay (util/info "Extracting Hoplon dependencies...\n"))
-        mfs (->> "hoplon/manifest.edn" pod/resources)]
+        mfs (->> "hoplon/manifest.edn" pod/resources (filter jar-resource?))]
     (doseq [path (mapcat (comp read-string slurp) mfs)]
       @msg
       (util/info "• %s\n" path)
