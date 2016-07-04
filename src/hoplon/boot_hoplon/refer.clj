@@ -8,46 +8,51 @@
 
 (ns hoplon.boot-hoplon.refer
   (:require
+    [cljs.util         :as u]
     [cljs.analyzer     :as a]
     [cljs.analyzer.api :as ana]
     [clojure.set       :as set]
-    [clojure.string    :as string]))
+    [clojure.string    :as string])
+  (:import
+    [java.io StringReader]
+    [clojure.lang LineNumberingPushbackReader]))
 
-(defn nsym->path [sym ext]
-  (-> (str sym)
-      (string/replace "." "/")
-      (string/replace "-" "_")
-      (str "." ext)))
+(defn read-string-1
+  [x]
+  (when x
+    (with-open [r (LineNumberingPushbackReader. (StringReader. x))]
+      [(read r false nil)
+       (apply str (concat (repeat (dec (.getLineNumber r)) "\n") [(slurp r)]))])))
+
+(defn forms-str [ns-form body]
+  (str (binding [*print-meta* true] (pr-str ns-form)) body))
 
 (def st (ana/empty-state))
 
 (defn analyze [ns]
-  (try (ana/analyze-file (nsym->path ns "cljs"))
-       (catch Throwable _
-         (try (ana/analyze-file (nsym->path ns "cljc"))
-              (catch Throwable _
-                (ana/analyze-file (nsym->path ns "clj")))))))
+  (try (ana/analyze-file (u/ns->relpath ns :cljs))
+       (catch Throwable _ (ana/analyze-file (u/ns->relpath ns :cljc)))))
 
-(defn get-publics* [ns]
+(defn require* [ns]
+  (not (try (require ns) (catch Throwable _ true))))
+
+(def macro?       (comp (some-fn :macro (comp :macro meta)) second))
+(def type?        (comp (some-fn :type :record) second))
+(def protocol?    (comp (some-fn :protocol :protocol-info :protocol-symbol) :meta second))
+(def without-meta (comp (partial apply with-meta) (partial conj '(nil))))
+(def public-names (comp (partial map (comp without-meta first)) sort))
+
+(defn get-publics [ns]
   (binding [a/*analyze-deps* false
             a/*cljs-warnings* nil]
-    (let [macro?    #(boolean (:macro (second %)))
-          type?     #(some identity ((juxt :type :record) (second %)))
-          protocol? #(->> % second :meta
-                          ((juxt :protocol :protocol-symbol :protocol-info))
-                          (some identity))
-          rm-meta   #(with-meta % nil)
-          names     #(->> % (map (comp rm-meta first)) sort)
-          {macros true defs false}
-          (ana/with-state st
-            (do (analyze ns)
-                (->> (ana/ns-publics ns)
-                     (remove protocol?)
-                     (remove type?)
-                     (group-by macro?))))]
-      {:macros (names macros) :defs (names defs)})))
-
-(def get-publics (memoize get-publics*))
+    (let [macros (filter macro? (and (require* ns) (ns-publics ns)))
+          defs   (ana/with-state st
+                   (do (analyze ns)
+                       (->> (ana/ns-publics ns)
+                            (remove protocol?)
+                            (remove type?)
+                            (remove macro?))))]
+      {:macros (public-names macros) :defs (public-names defs)})))
 
 (defn exclude [ops exclusions]
   (vec (set/difference (set ops) (set exclusions))))
@@ -65,8 +70,13 @@
       [spec]
       (vec (->> (map combine args) (mapcat expand-nested))))))
 
+(defmethod a/error-message :hoplon/conflict
+  [warning-type info]
+  (format "Name conflict, %s/%s is both CLJS var and CLJ macro"
+          (:lib info) (:sym info)))
+
 (defn do-require [xs [ns & mods]]
-  (let [{:keys [defs macros]} (get-publics* ns)
+  (let [{:keys [defs macros]} (get-publics ns)
         [defs macros] (map set [defs macros])
         mods          (apply hash-map mods)
         [names mods]  ((juxt #(% :refer) #(dissoc % :refer)) mods)
@@ -79,13 +89,15 @@
         xs (if (empty? macros) xs (update-in xs [:require-macros ns] merge mods))
         xs (if (empty? refer-defs) xs (update-in xs [:require ns :refer] inset refer-defs))
         xs (if (empty? refer-macros) xs (update-in xs [:require-macros ns :refer] inset refer-macros))]
-    (assert
-      (empty? refer-errors)
-      (format "No such names: %s in namespace %s" (string/join ", " refer-errors) ns))
+    (binding [a/*cljs-warnings* {:hoplon/conflict true :undeclared-ns-form true}]
+      (doseq [x (set/intersection defs macros)]
+        (a/warning :hoplon/conflict {} {:lib ns :sym x}))
+      (doseq [x (set/difference names (set/union defs macros))]
+        (a/warning :undeclared-ns-form {} {:type "name" :lib ns :sym x})))
     xs))
 
 (defn do-use [xs [ns & mods]]
-  (let [{:keys [defs macros]} (get-publics* ns)
+  (let [{:keys [defs macros]} (get-publics ns)
         [defs macros] (map set [defs macros])
         all-names     (set/union defs macros)
         mods          (apply hash-map mods)
@@ -120,5 +132,9 @@
 (defn emit-nsdecl [{:keys [tag ns-sym clauses]}]
   (list* tag ns-sym (map emit-clause clauses)))
 
-(defn rewrite-ns [ns-form]
+(defn rewrite-ns-form [ns-form]
   (emit-nsdecl (parse-nsdecl ns-form)))
+
+(defn rewrite-ns-str [ns-str]
+  (let [[ns-form body] (read-string-1 ns-str)]
+    (forms-str (rewrite-ns-form ns-form) body)))

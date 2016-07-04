@@ -134,7 +134,7 @@
             (when (= tag 'ns+)
               (let [cljs-out (io/file cljsdir (cljs.util/ns->relpath ns-sym))
                     ns-form  (list* 'ns ns-sym (remove gen-html? clauses))]
-                (write cljs-out (forms-str (refer/rewrite-ns ns-form) body)))))
+                (write cljs-out (refer/rewrite-ns-str (forms-str ns-form body))))))
           (.endsWith path ".hl")
           (let [{:keys [cljs ns html edn file js-file]} (compile-forms ns-form body opts)
                 cljs-out (io/file cljsdir (ns->path ns))]
