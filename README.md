@@ -2,11 +2,21 @@
 
 [](dependency)
 ```clojure
-[hoplon/boot-hoplon "0.1.13"] ;; latest release
+[hoplon/boot-hoplon "0.2.0"] ;; latest release
 ```
 [](/dependency)
 
 [Boot] task for building [Hoplon] web applications.
+
+## What's In The Box™
+
+* Generate HTML page and CLJS namespace from Hoplon `.hl` file.
+* Prerender application HTML in PhantomJS.
+* Generate HTML page according to namespace metadata in regular `.cljs` files.
+* Provides extended `ns+` form to make namespace declarations work in `.cljs`
+  files the way they work in `.clj` (that is, `:use` and `:refer` work as in
+  Clojure and there is no need to use `:require-macros`, `:use-macros`, or
+  `:refer-macros` --- it just figures out what to do automatically).
 
 ## Usage
 

@@ -130,7 +130,7 @@ page.open(uri, function(status) {
               hls     (->> fileset
                            (boot/fileset-diff @prev-fileset)
                            boot/input-files
-                           (boot/by-ext [".hl"])
+                           (boot/by-ext [".hl" ".cljs"])
                            (map (juxt boot/tmp-path #(.getPath (boot/tmp-file %)))))]
           (reset! prev-fileset fileset)
           (pod/with-call-in @pod
