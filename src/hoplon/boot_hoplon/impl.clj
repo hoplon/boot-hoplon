@@ -39,11 +39,11 @@
           (io/make-parents prerendered-path)
           (spit prerendered-path (ts/print-page "html" merged)))))))
 
-(defn hoplon [cljs-dir html-dir hl-files opts]
-  (util/info "Compiling Hoplon pages...\n")
-  (doseq [[out-path in-path] hl-files]
-    (util/info "• %s\n" out-path)
-    (hl/compile-file (io/file in-path) (io/file cljs-dir) (io/file html-dir) :opts opts)))
+(defn hoplon [cljs-dir html-dir paths opts]
+  (let [desc    (delay (util/info "Writing HTML files...\n"))
+        say-it  (fn [path] @desc (util/info "• %s\n" path))]
+    (doseq [path paths]
+      (hl/compile-file say-it path (io/file cljs-dir) (io/file html-dir) :opts opts))))
 
 (defn html2cljs [file]
   (->> file slurp hl/->cljs-str

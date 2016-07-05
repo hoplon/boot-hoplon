@@ -10,12 +10,19 @@
   (:require
     [cljs.util         :as u]
     [cljs.analyzer     :as a]
+    [clojure.java.io   :as io]
     [cljs.analyzer.api :as ana]
     [clojure.set       :as set]
-    [clojure.string    :as string])
+    [boot.util         :as util]
+    [clojure.string    :as string]
+    [hoplon.boot-hoplon.kahn :as kahn])
   (:import
     [java.io StringReader]
     [clojure.lang LineNumberingPushbackReader]))
+
+(def ^:dynamic *in-ns* nil)
+
+(def st (ana/empty-state))
 
 (defn read-string-1
   [x]
@@ -26,8 +33,6 @@
 
 (defn forms-str [ns-form body]
   (str (binding [*print-meta* true] (pr-str ns-form)) body))
-
-(def st (ana/empty-state))
 
 (defn analyze [ns]
   (try (ana/analyze-file (u/ns->relpath ns :cljs))
@@ -46,12 +51,11 @@
   (binding [a/*analyze-deps* false
             a/*cljs-warnings* nil]
     (let [macros (filter macro? (and (require* ns) (ns-publics ns)))
-          defs   (ana/with-state st
-                   (do (analyze ns)
-                       (->> (ana/ns-publics ns)
-                            (remove protocol?)
-                            (remove type?)
-                            (remove macro?))))]
+          defs   (when-not (= ns *in-ns*)
+                   (ana/with-state st
+                     (do (analyze ns)
+                         (->> (ana/ns-publics ns)
+                              (remove (some-fn protocol? type? macro?))))))]
       {:macros (public-names macros) :defs (public-names defs)})))
 
 (defn exclude [ops exclusions]
@@ -70,11 +74,6 @@
       [spec]
       (vec (->> (map combine args) (mapcat expand-nested))))))
 
-(defmethod a/error-message :hoplon/conflict
-  [warning-type info]
-  (format "Name conflict, %s/%s is both CLJS var and CLJ macro"
-          (:lib info) (:sym info)))
-
 (defn do-require [xs [ns & mods]]
   (let [{:keys [defs macros]} (get-publics ns)
         [defs macros] (map set [defs macros])
@@ -89,11 +88,10 @@
         xs (if (empty? macros) xs (update-in xs [:require-macros ns] merge mods))
         xs (if (empty? refer-defs) xs (update-in xs [:require ns :refer] inset refer-defs))
         xs (if (empty? refer-macros) xs (update-in xs [:require-macros ns :refer] inset refer-macros))]
-    (binding [a/*cljs-warnings* {:hoplon/conflict true :undeclared-ns-form true}]
-      (doseq [x (set/intersection defs macros)]
-        (a/warning :hoplon/conflict {} {:lib ns :sym x}))
-      (doseq [x (set/difference names (set/union defs macros))]
-        (a/warning :undeclared-ns-form {} {:type "name" :lib ns :sym x})))
+    (doseq [x (set/intersection defs macros)]
+      (util/warn "WARNING: Name conflict, %s/%s is both CLJS var and CLJ macro.\n" ns x))
+    (doseq [x (set/difference names (set/union defs macros))]
+      (util/warn "WARNING: Can't :refer %s/%s because it doesn't exist.\n" ns x))
     xs))
 
 (defn do-use [xs [ns & mods]]
@@ -117,12 +115,13 @@
     (assoc xs k (vec specs))))
 
 (defn parse-nsdecl [[tag ns-sym & clauses]]
-  (merge {:tag tag :ns-sym ns-sym}
-         {:clauses (let [{:keys [require use] :as ret} (reduce parse-clause {} clauses)]
-                     (reduce do-use (reduce do-require (dissoc ret :require :use) require) use))}))
+  (binding [*in-ns* ns-sym]
+    (merge {:tag tag :ns-sym ns-sym}
+           {:clauses (let [{:keys [require use] :as ret} (reduce parse-clause {} clauses)]
+                       (reduce do-use (reduce do-require (dissoc ret :require :use) require) use))})))
 
 (defn emit-spec [[ns-sym mods]]
-  (into [ns-sym] (mapcat (fn [[k v]] [k (if (set? v) (vec v) v)]) mods)))
+  (into [ns-sym] (mapcat (fn [[k v]] [k (if (set? v) (vec (sort v)) v)]) mods)))
 
 (defn emit-clause [[k specs]]
   (if-not (map? specs)
@@ -130,11 +129,48 @@
     (list* k (map emit-spec specs))))
 
 (defn emit-nsdecl [{:keys [tag ns-sym clauses]}]
-  (list* tag ns-sym (map emit-clause clauses)))
+  (list* tag ns-sym (map emit-clause (into (sorted-map) clauses))))
 
 (defn rewrite-ns-form [ns-form]
   (emit-nsdecl (parse-nsdecl ns-form)))
 
-(defn rewrite-ns-str [ns-str]
-  (let [[ns-form body] (read-string-1 ns-str)]
-    (forms-str (rewrite-ns-form ns-form) body)))
+(defn get-cljs-deps [ns-path]
+  (some->> (io/resource ns-path)
+           (slurp)
+           (read-string)
+           (drop 2)
+           (filter (comp #{:require :use} first))
+           (mapcat (comp (partial map first) (partial drop 1)))
+           (filter #(= "file" (some-> % u/ns->source .getProtocol)))
+           (keep #(let [p (u/ns->relpath %)] (when (not= p ns-path) p)))
+           (into #{})))
+
+(defn sort-dep-order [paths]
+  (let [p (set paths)]
+    (loop [[path & paths] paths graph {}]
+      (if-not path
+        (->> (kahn/sort graph) (reverse) (filter p))
+        (let [deps (get-cljs-deps path)]
+          (recur (into paths deps) (assoc graph path deps)))))))
+
+(def valid-clause?
+  (comp #{:refer-clojure :require :require-macros :use :use-macros :import} first))
+
+(defn rewrite-ns-path [say-it modtime outdir path]
+  (let [[[tag ns-sym & clauses] body] (read-string-1 (slurp (io/resource path)))]
+    (when (= tag 'ns+)
+      (say-it path)
+      (let [ns-form (list* 'ns ns-sym (filter valid-clause? clauses))
+            outfile (doto (io/file outdir path) io/make-parents)]
+        (->> (forms-str (rewrite-ns-form ns-form) body) (spit outfile))
+        (.setLastModified outfile modtime)))))
+
+(comment
+
+  (->> (rewrite-ns-form
+         '(ns foo.bar
+            (:require [javelin.core :refer :all]
+                      [hoplon.core :refer [p h1 h3 h2]])))
+       (clojure.pprint/pprint))
+
+  )

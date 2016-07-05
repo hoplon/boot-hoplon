@@ -104,7 +104,7 @@
                outpath     (output-path [nsdecl])
                page-ns     (munge-page page)
                cljsstr     (let [[h _ & t] (make-nsdecl nsdecl opts)]
-                             (forms-str (list* h page-ns t) body)) 
+                             (forms-str (list* h page-ns t) body))
                js-out      (if-not bust-cache outpath (hl/bust-cache outpath))
                js-uri      (-> js-out (string/split #"/") last (str ".js"))
                htmlstr     (html-str js-uri)
@@ -118,23 +118,20 @@
     (doto f io/make-parents (spit s))))
 
 (defn compile-string
-  [forms-as-str path cljsdir htmldir & {{:keys [bust-cache refers] :as opts} :opts}]
+  [say-it forms-as-str path cljsdir htmldir & {{:keys [bust-cache refers] :as opts} :opts}]
   (let [[[tag ns-sym & clauses :as ns-form] body] (read-string-1 (->cljs-str forms-as-str))
         {html-path :hoplon/page} (meta ns-sym)]
     (cond (.endsWith path ".cljs")
           (let [gen-html? #(= :page (first %))
-                html-cls  (first (filter gen-html? clauses))
+                html-cls  (->> clauses (filter gen-html?) first)
                 html-path (or html-path (second html-cls))]
             (when html-path
               (let [outpath   (if-not bust-cache html-path (hl/bust-cache html-path))
                     js-uri    (-> outpath (string/split #"/") last (str ".js"))
                     edn-path  (str outpath ".cljs.edn")]
+                (say-it outpath)
                 (write (io/file htmldir html-path) (html-str js-uri))
-                (write (io/file cljsdir edn-path) (pr-str {:require [ns-sym]}))))
-            (when (= tag 'ns+)
-              (let [cljs-out (io/file cljsdir (cljs.util/ns->relpath ns-sym))
-                    ns-form  (list* 'ns ns-sym (remove gen-html? clauses))]
-                (write cljs-out (refer/rewrite-ns-str (forms-str ns-form body))))))
+                (write (io/file cljsdir edn-path) (pr-str {:require [ns-sym]})))))
           (.endsWith path ".hl")
           (let [{:keys [cljs ns html edn file js-file]} (compile-forms ns-form body opts)
                 cljs-out (io/file cljsdir (ns->path ns))]
@@ -142,8 +139,9 @@
             (when file
               (let [html-out (io/file htmldir file)
                     edn-out  (io/file cljsdir (str js-file ".cljs.edn"))]
+                (say-it file)
                 (write edn-out edn)
                 (write html-out html)))))))
 
-(defn compile-file [f & args]
-  (apply compile-string (slurp f) (.getPath f) args))
+(defn compile-file [say-it path & args]
+  (apply compile-string say-it (slurp (io/resource path)) path args))
