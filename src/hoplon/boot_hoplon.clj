@@ -73,9 +73,11 @@ page.open(uri, function(status) {
       (let [html (->> fileset
                       boot/output-files
                       (boot/by-ext [".html"])
-                      (map (juxt boot/tmp-path (comp (memfn getPath) boot/tmp-file))))]
+                      (map (juxt boot/tmp-path (comp (memfn getPath)
+                                                     boot/tmp-file))))]
         (pod/with-call-in @pod
-          (hoplon.boot-hoplon.impl/prerender ~engine ~(.getPath tmp) ~rjs-path ~html))
+          (hoplon.boot-hoplon.impl/prerender
+            ~engine ~(.getPath tmp) ~rjs-path ~html))
         (-> fileset (boot/add-resource tmp) boot/commit!)))))
 
 (defn- fspath->jarpath
@@ -119,7 +121,8 @@ page.open(uri, function(status) {
                            (boot/by-ext [".cljs"])
                            (group-by boot/tmp-path))
             cljsdep   (->> cljses (keys) (refer/sort-dep-order))
-            add-tmp!  (fn [fs] (-> fs (boot/add-resource tmp-cljs+) boot/commit!))
+            add-tmp!  (fn [fs]
+                        (-> fs (boot/add-resource tmp-cljs+) boot/commit!))
             desc      (delay (util/info "Rewriting ns+ declarations...\n"))
             say-it    (fn [path] @desc (util/info "• %s\n" path))]
         (reset! prev-fileset fileset)
@@ -137,13 +140,17 @@ page.open(uri, function(status) {
   [p pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
    b bust-cache   bool "Add cache-busting uuid to JavaScript file name."
    m manifest     bool "Create Hoplon manifest for jars that include .hl files."
-   ;r refers  VAL  #{sym} "Require these namespaces in each .hl page."
+   r require-clj  VAL  #{sym} "Require these clj namespaces in each .hl page."
+   s require-cljs VAL  #{sym} "Require these cljs namespaces in each .hl page.
+                              (Not needed if duplicate of clj namespace.)"
    ]
   (let [prev-fileset (atom nil)
         tmp-hl       (boot/tmp-dir!)
         tmp-cljs     (boot/tmp-dir!)
         tmp-html     (boot/tmp-dir!)
-        opts         (dissoc *opts* :lib)
+        reassoc      #(assoc (dissoc %1 %3) %2 (%1 %3))
+        opts         (->> *opts* (reassoc :require-clj :refers)
+                                 (reassoc :require-cljs :refers-cljs))
         pod          (future @hoplon-pod)
         extract!     (delay (extract-deps! tmp-hl))]
     (comp
@@ -153,7 +160,8 @@ page.open(uri, function(status) {
         (boot/with-pre-wrap fileset
           @extract!
           (let [fileset (-> fileset
-                            (boot/add-source tmp-hl :mergers pod/standard-jar-mergers)
+                            (boot/add-source tmp-hl
+                              :mergers pod/standard-jar-mergers)
                             boot/commit!)
                 hls     (->> fileset
                              (boot/fileset-diff @prev-fileset)
@@ -168,8 +176,14 @@ page.open(uri, function(status) {
             (reset! prev-fileset fileset)
             (pod/with-call-in @pod
               (hoplon.boot-hoplon.impl/hoplon
-                ~(.getPath tmp-cljs) ~(.getPath tmp-html) [~@(concat hls cljses)] ~opts))
-            (-> fileset (boot/add-source tmp-cljs) (boot/add-resource tmp-html) boot/commit!))))
+                ~(.getPath tmp-cljs)
+                ~(.getPath tmp-html)
+                [~@(concat hls cljses)]
+                ~opts))
+            (-> fileset
+              (boot/add-source tmp-cljs)
+              (boot/add-resource tmp-html)
+              boot/commit!))))
       (ns+))))
 
 (boot/deftask html2cljs
