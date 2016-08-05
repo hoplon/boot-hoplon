@@ -147,7 +147,7 @@ page.open(uri, function(status) {
         tmp-hl       (boot/tmp-dir!)
         tmp-cljs     (boot/tmp-dir!)
         tmp-html     (boot/tmp-dir!)
-        reassoc      #(assoc (dissoc %1 %3) %2 (%1 %3))
+        reassoc      (fn [oldk newk map] (assoc (dissoc map oldk) newk (oldk map)))
         jquery       (:jquery *opts*)
         goog         (:goog *opts*)
         opts         (reassoc :require :refers *opts*)
