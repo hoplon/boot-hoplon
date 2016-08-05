@@ -136,7 +136,9 @@ page.open(uri, function(status) {
   "Build Hoplon web application."
   [p pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
    b bust-cache   bool "Add cache-busting uuid to JavaScript file name."
-   m manifest     bool "Create Hoplon manifest for jars that include .hl files."]
+   m manifest     bool "Create Hoplon manifest for jars that include .hl files."
+   ;r refers  VAL  #{sym} "Require these namespaces in each .hl page."
+   ]
   (let [prev-fileset (atom nil)
         tmp-hl       (boot/tmp-dir!)
         tmp-cljs     (boot/tmp-dir!)
