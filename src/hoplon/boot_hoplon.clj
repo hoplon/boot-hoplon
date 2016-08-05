@@ -140,17 +140,20 @@ page.open(uri, function(status) {
   [p pretty-print bool "Pretty-print CLJS files created by the Hoplon compiler."
    b bust-cache   bool "Add cache-busting uuid to JavaScript file name."
    m manifest     bool "Create Hoplon manifest for jars that include .hl files."
-   r require-clj  VAL  #{sym} "Require these clj namespaces in each .hl page."
-   s require-cljs VAL  #{sym} "Require these cljs namespaces in each .hl page.
-                              (Not needed if duplicate of clj namespace.)"
-   ]
+   r require  VAL #{sym} "Require these clj namespaces in each .hl page."
+   j jquery       bool "Use hoplon.jquery as an attribute provider. (requires cljsjs/jquery)"
+   g goog         bool "Use hoplon.goog as an attribute provider. (requires hoplon/brew)"]
   (let [prev-fileset (atom nil)
         tmp-hl       (boot/tmp-dir!)
         tmp-cljs     (boot/tmp-dir!)
         tmp-html     (boot/tmp-dir!)
         reassoc      #(assoc (dissoc %1 %3) %2 (%1 %3))
-        opts         (->> *opts* (reassoc :require-clj :refers)
-                                 (reassoc :require-cljs :refers-cljs))
+        jquery       (:jquery *opts*)
+        goog         (:goog *opts*)
+        opts         (reassoc :require :refers *opts*)
+        opts         (assoc opts :refers (cond-> (:refers opts)
+                                           jquery (into 'hoplon.jquery)
+                                           goog   (into 'hoplon.goog)))
         pod          (future @hoplon-pod)
         extract!     (delay (extract-deps! tmp-hl))]
     (comp

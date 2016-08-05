@@ -68,7 +68,8 @@
 
 (defn make-nsdecl [[_ ns-sym & forms] {:keys [refers]}]
   (let [ns-sym    (symbol ns-sym)
-        refers    (into '#{hoplon.core javelin.core hoplon.jquery} refers)
+        core-ns   #{hoplon.core javelin.core}
+        refers    (if-not refers (into core-ns hoplon.jquery) core-ns)
         rm?       #{} ;;#(or (contains? refers %) (and (seq %) (contains? refers (first %))))
         mk-req    #(concat (remove rm? %2) (map %1 refers (repeat %3)))
         clauses   (->> (tree-seq seq? seq forms) (filter seq?) (group-by first))
