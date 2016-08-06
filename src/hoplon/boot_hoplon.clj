@@ -152,8 +152,8 @@ page.open(uri, function(status) {
         goog         (:goog *opts*)
         opts         (reassoc :require :refers *opts*)
         opts         (assoc opts :refers (cond-> (:refers opts)
-                                           jquery (into 'hoplon.jquery)
-                                           goog   (into 'hoplon.goog)))
+                                           jquery (conj 'hoplon.jquery)
+                                           goog   (conj 'hoplon.goog)))
         pod          (future @hoplon-pod)
         extract!     (delay (extract-deps! tmp-hl))]
     (comp
