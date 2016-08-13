@@ -11,7 +11,7 @@
   '[clojure.java.io :as io]
   '[adzerk.bootlaces :refer :all])
 
-(def +version+ "0.2.3")
+(def +version+ "0.2.4")
 
 (bootlaces! +version+ :dev-dependencies "hoplon/boot_hoplon/pod_deps.edn")
 
