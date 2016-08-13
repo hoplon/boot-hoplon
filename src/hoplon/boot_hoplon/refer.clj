@@ -141,7 +141,7 @@
            (read-string)
            (drop 2)
            (filter (comp #{:require :use} first))
-           (mapcat (comp (partial map first) (partial drop 1)))
+           (mapcat (comp (partial map #(if (symbol? %) % (first %))) (partial drop 1)))
            (filter #(= "file" (some-> % u/ns->source .getProtocol)))
            (keep #(let [p (u/ns->relpath %)] (when (not= p ns-path) p)))
            (into #{})))
