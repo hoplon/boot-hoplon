@@ -12,6 +12,7 @@
     [clojure.pprint             :as pp]
     [clojure.java.io            :as io]
     [clojure.string             :as string]
+    [clojure.set                :as set]
     [hoplon.core                :as hl]
     [hoplon.boot-hoplon.tagsoup :as tags]
     [hoplon.boot-hoplon.refer   :as refer])
@@ -68,7 +69,8 @@
 
 (defn make-nsdecl [[_ ns-sym & forms] {:keys [refers]}]
   (let [ns-sym    (symbol ns-sym)
-        refers    (into '#{hoplon.core javelin.core} refers)
+        core-ns   '#{hoplon.core javelin.core}
+        refers    (if-not refers (conj core-ns 'hoplon.jquery) (set/union core-ns refers))
         rm?       #{} ;;#(or (contains? refers %) (and (seq %) (contains? refers (first %))))
         mk-req    #(concat (remove rm? %2) (map %1 refers (repeat %3)))
         clauses   (->> (tree-seq seq? seq forms) (filter seq?) (group-by first))
