@@ -72,7 +72,7 @@
         core-ns   '#{hoplon.core javelin.core}
         refers    (if-not refers (conj core-ns 'hoplon.jquery) (set/union core-ns refers))
         rm?       #{} ;;#(or (contains? refers %) (and (seq %) (contains? refers (first %))))
-        mk-req    #(concat (remove rm? %2) (map %1 refers (repeat %3)))
+        mk-req    #(remove nil? (concat (remove rm? %2) (map %1 refers (repeat %3))))
         clauses   (->> (tree-seq seq? seq forms) (filter seq?) (group-by first))
         exclude   (when-let [e (:refer-hoplon clauses)] (nth (first e) 2))
         combine   #(mapcat (partial drop 1) (% clauses))

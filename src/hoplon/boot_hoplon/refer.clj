@@ -63,10 +63,12 @@
   (vec (set/difference (set ops) (set exclusions))))
 
 (defn make-require [ns-sym & [exclusions]]
-  [ns-sym :refer (exclude (:defs (get-publics ns-sym)) exclusions)])
+  (when-let [refers (exclude (:defs (get-publics ns-sym)) exclusions)]
+    [ns-sym :refer (vec refers)]))
 
 (defn make-require-macros [ns-sym & [exclusions]]
-  [ns-sym :refer (exclude (:macros (get-publics ns-sym)) exclusions)])
+  (when-let [refers (seq (exclude (:macros (get-publics ns-sym)) exclusions))]
+    [ns-sym :refer (vec refers)]))
 
 (defn expand-nested [[ns-sym & args :as spec]]
   (letfn [(combine [[ns-sym' & args]]

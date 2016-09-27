@@ -5,7 +5,7 @@
   :dependencies '[[org.clojure/clojure       "1.7.0"          :scope "provided"]
                   [org.clojure/clojurescript "1.7.228"        :scope "provided"]
                   [hoplon                    "6.0.0-alpha16"  :scope "provided"]
-                  [hoplon/brew               "0.2.0-SNAPSHOT" :scope "provided"]
+                  #_[hoplon/brew               "0.2.0-SNAPSHOT" :scope "provided"]
                   [adzerk/bootlaces          "0.1.13"         :scope "test"]])
 
 (require
