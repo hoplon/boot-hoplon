@@ -39,7 +39,7 @@
        (catch Throwable _ (ana/analyze-file (u/ns->relpath ns :cljc)))))
 
 (defn require* [ns]
-  (not (try (require ns) (catch Throwable _ true))))
+  (try (require ns) true (catch Throwable _)))
 
 (def macro?       (comp (some-fn :macro (comp :macro meta)) second))
 (def type?        (comp (some-fn :type :record) second))
@@ -51,21 +51,24 @@
   (binding [a/*analyze-deps* false
             a/*cljs-warnings* nil]
     (let [macros (filter macro? (and (require* ns) (ns-publics ns)))
-          defs   (when-not (= ns *in-ns*)
-                   (ana/with-state st
-                     (do (analyze ns)
-                         (->> (ana/ns-publics ns)
-                              (remove (some-fn protocol? type? macro?))))))]
+          defs   (try (when-not (= ns *in-ns*)
+                        (ana/with-state st
+                          (do (analyze ns)
+                              (->> (ana/ns-publics ns)
+                                   (remove (some-fn protocol? type? macro?))))))
+                      (catch Throwable _))]
       {:macros (public-names macros) :defs (public-names defs)})))
 
 (defn exclude [ops exclusions]
   (vec (set/difference (set ops) (set exclusions))))
 
 (defn make-require [ns-sym & [exclusions]]
-  [ns-sym :refer (exclude (:defs (get-publics ns-sym)) exclusions)])
+  (when-let [refers (exclude (:defs (get-publics ns-sym)) exclusions)]
+    [ns-sym :refer (vec refers)]))
 
 (defn make-require-macros [ns-sym & [exclusions]]
-  [ns-sym :refer (exclude (:macros (get-publics ns-sym)) exclusions)])
+  (when-let [refers (seq (exclude (:macros (get-publics ns-sym)) exclusions))]
+    [ns-sym :refer (vec refers)]))
 
 (defn expand-nested [[ns-sym & args :as spec]]
   (letfn [(combine [[ns-sym' & args]]
