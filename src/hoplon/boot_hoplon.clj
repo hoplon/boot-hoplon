@@ -135,12 +135,18 @@ page.open(uri, function(status) {
               (refer/rewrite-ns-path say-it modtime tmp-cljs+ path)
               (recur paths (add-tmp! fs)))))))))
 
+(defn- on-classpath?
+  [ns-sym]
+  (let [base (-> ns-sym munge str (.replaceAll "\\." "/"))]
+    (or (io/resource (str base ".cljs"))
+        (io/resource (str base ".cljc")))))
+
 (boot/deftask hoplon
   "Build Hoplon web application."
   [p pretty-print bool    "Pretty-print CLJS files created by the Hoplon compiler."
    b bust-cache   bool    "Add cache-busting uuid to JavaScript file name."
    m manifest     bool    "Create Hoplon manifest for jars that include .hl files."
-   r refers VAL   #{sym}  "The set of namespaces to refer (including macros) in all .hl files."]
+   r refers VAL   #{sym}  "The set of namespaces to refer (including macros) in all .hl files. Default is #{hoplon.jquery}."]
   (let [prev-fileset (atom nil)
         tmp-hl       (boot/tmp-dir!)
         tmp-cljs     (boot/tmp-dir!)
@@ -153,10 +159,11 @@ page.open(uri, function(status) {
           (-> fileset (write-manifest! tmp-hl) boot/commit!))
         (boot/with-pre-wrap fileset
           @extract!
-          (let [fileset (-> fileset
-                            (boot/add-source tmp-hl
-                              :mergers pod/standard-jar-mergers)
-                            boot/commit!)
+          (let [fileset (boot/commit!
+                          (boot/add-source
+                            fileset
+                            tmp-hl
+                            :mergers pod/standard-jar-mergers))
                 hls     (->> fileset
                              (boot/fileset-diff @prev-fileset)
                              boot/input-files
@@ -166,18 +173,22 @@ page.open(uri, function(status) {
                              (boot/fileset-diff @prev-fileset)
                              boot/input-files
                              (boot/by-ext [".cljs"])
-                             (map boot/tmp-path))]
+                             (map boot/tmp-path))
+                refers  (->> (or refers #{'hoplon.jquery})
+                             (filter on-classpath?)
+                             (set))
+                options (assoc *opts* :refers refers)]
             (reset! prev-fileset fileset)
             (pod/with-call-in @pod
               (hoplon.boot-hoplon.impl/hoplon
                 ~(.getPath tmp-cljs)
                 ~(.getPath tmp-html)
                 [~@(concat hls cljses)]
-                ~*opts*))
+                ~options))
             (-> fileset
-              (boot/add-source tmp-cljs)
-              (boot/add-resource tmp-html)
-              boot/commit!))))
+                (boot/add-source tmp-cljs)
+                (boot/add-resource tmp-html)
+                boot/commit!))))
       (ns+))))
 
 (boot/deftask html2cljs
