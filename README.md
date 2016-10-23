@@ -1,4 +1,4 @@
-# boot-hoplon
+# boot-hoplon [![Deprecated](https://img.shields.io/badge/status-deprecated-red.svg)](https://github.com/hoplon/hoplon/pull/151)
 
 [](dependency)
 ```clojure
